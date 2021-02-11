@@ -8,6 +8,26 @@ import (
 
 func TestAppServeHTTP(t *testing.T) {
 	// arrange
+	h := newAppHandler()
+
+	req := httptest.NewRequest("GET", "/?offset=0&count=5", nil)
+	resp := httptest.NewRecorder()
+
+	// act
+	h.ServeHTTP(resp, req)
+
+	// assert
+	assertStatusCode(t, http.StatusOK, resp.Code)
+}
+
+func assertStatusCode(t *testing.T, want, got int) {
+	t.Helper()
+	if want != got {
+		t.Fatalf("want response code %d, got %d", want, got)
+	}
+}
+
+func newAppHandler() App {
 	h := App{
 		ContentClients: map[Provider]Client{
 			Provider1: SampleContentProvider{Source: Provider1},
@@ -16,18 +36,5 @@ func TestAppServeHTTP(t *testing.T) {
 		},
 		Config: DefaultConfig,
 	}
-
-	s := httptest.NewServer(h)
-	defer s.Close()
-
-	rr := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/?offset=0&count=5", nil)
-
-	// act
-	h.ServeHTTP(rr, req)
-
-	// assert
-	if rr.Code != http.StatusOK {
-		t.Fatalf("Response code is %d, want 200", rr.Code)
-	}
+	return h
 }
