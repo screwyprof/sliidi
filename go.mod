@@ -1,3 +1,3 @@
-module github.com/sliide/go-test
+module github.com/screwyprof/sliide
 
 go 1.14
