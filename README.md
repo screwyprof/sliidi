@@ -80,3 +80,28 @@ Hints:
 - Tests are run with `go test` in the current directory.
 - Try to keep to the standard library as much as possible
 - Latency is crucial for this application, so fetching the items sequentially one at a time might not be good enough
+
+# Development
+
+## Development Log
+[This document](docs/Development.md) guides your though the steps I've taken to implement this task.
+
+### Building the project
+Simply run `make` or `make all` to install all the required dependencies and tools, to run linters and all the tests.
+Use `make help` to get information about additional targets.
+
+### Running server
+Use `make run` to run the server.
+
+### Running tests
+To run unit and acceptance tests run `make test`. To run unit tests only `make test-unit`. 
+To run acceptance tests `make test-acceptance`
+
+### Running linters
+In order to run linters you may need to install some deps first.
+Makefile assumes [golangci-lint](https://github.com/golangci/golangci-lint) is installed and can be found in your $PATH.
+
+To run linters use `make lint`.
+
+### Formatting code
+Use `make fmt` to run go fmt
