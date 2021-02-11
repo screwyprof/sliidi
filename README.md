@@ -1,4 +1,5 @@
 # Golang Coding challenge
+![sliidi](https://github.com/screwyprof/sliidi/workflows/sliidi/badge.svg)
 
 The dev team at [Sliide](https://sliide.com/) created this coding challenge to help assess your coding and problem solving skills
 Along with this file, you should find an archive with the code od the project to complete.
