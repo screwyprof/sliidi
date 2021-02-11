@@ -33,7 +33,6 @@ func runRequest(t *testing.T, srv http.Handler, r *http.Request) (content []*Con
 }
 
 func TestResponseCount(t *testing.T) {
-	t.Skip("WIP")
 	content := runRequest(t, app, SimpleContentRequest)
 
 	if len(content) != 5 {
