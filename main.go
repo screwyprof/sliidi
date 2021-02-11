@@ -25,7 +25,7 @@ var (
 )
 
 func main() {
-	log.Printf("initalising server on %s", *addr)
+	log.Printf("initialising server on %s", *addr)
 
 	srv := http.Server{
 		Addr:    *addr,
