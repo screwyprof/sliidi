@@ -32,6 +32,24 @@ func TestAppServeHTTP(t *testing.T) {
 		assertStatusCode(t, http.StatusOK, resp.Code)
 		assertResponseElementsCount(t, want, resp)
 	})
+
+	t.Run("it returns default number of records if count param is not passed", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		want := defaultPageSize
+
+		req := httptest.NewRequest("GET", "/?offset=0", nil)
+		resp := httptest.NewRecorder()
+
+		// act
+		h := newAppHandler()
+		h.ServeHTTP(resp, req)
+
+		// assert
+		assertStatusCode(t, http.StatusOK, resp.Code)
+		assertResponseElementsCount(t, want, resp)
+	})
 }
 
 func newAppHandler() App {
