@@ -20,13 +20,21 @@ func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	log.Printf("%s %s", req.Method, req.URL.String())
 
 	countParam := req.URL.Query().Get("count")
-	res, err := a.ContentClients[Provider1].GetContent("127.0.0.1", a.pageSizeFromRequest(countParam))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	count := a.pageSizeFromRequest(countParam)
+
+	// fetch items
+	resp := make([]*ContentItem, 0, count)
+	for i := 0; i < count; i++ {
+		items, err := a.ContentClients[a.Config[i%len(a.Config)].Type].GetContent("127.0.0.1", 1)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		resp = append(resp, items...)
 	}
 
-	if err := json.NewEncoder(w).Encode(res); err != nil {
+	// marshal response
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

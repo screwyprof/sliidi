@@ -50,6 +50,34 @@ func TestAppServeHTTP(t *testing.T) {
 		assertStatusCode(t, http.StatusOK, resp.Code)
 		assertResponseElementsCount(t, want, resp)
 	})
+
+	t.Run("it fetches records from the given providers according to the configuration", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		count := 8
+		want := []Provider{Provider1, Provider1, Provider2, Provider3, Provider1, Provider1, Provider1, Provider2}
+
+		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
+		resp := httptest.NewRecorder()
+
+		// act
+		h := newAppHandler()
+		h.ServeHTTP(resp, req)
+
+		// assert
+		assertStatusCode(t, http.StatusOK, resp.Code)
+
+		var items []*ContentItem
+		ok(t, json.NewDecoder(resp.Body).Decode(&items))
+
+		got := make([]Provider, 0, len(items))
+		for _, item := range items {
+			got = append(got, Provider(item.Source))
+		}
+
+		equals(t, want, got)
+	})
 }
 
 func newAppHandler() App {
