@@ -8,10 +8,11 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func init() {
-	rand.Seed(0)
+	rand.Seed(time.Now().Unix())
 }
 
 func TestAppServeHTTP(t *testing.T) {
@@ -25,7 +26,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler()
+		h := newAppHandler(DefaultConfig)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -43,7 +44,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler()
+		h := newAppHandler(DefaultConfig)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -55,14 +56,16 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		count := 8
-		want := []Provider{Provider1, Provider1, Provider2, Provider3, Provider1, Provider1, Provider1, Provider2}
+		count := 0 //rand.Intn(9) + 1 // nolint:gosec
+		cfg := generateConfig(count)
+
+		want := providerListFromConfig(cfg)
 
 		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler()
+		h := newAppHandler(cfg)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -71,16 +74,36 @@ func TestAppServeHTTP(t *testing.T) {
 	})
 }
 
-func newAppHandler() App {
+func newAppHandler(cfg ContentMix) App {
 	h := App{
 		ContentClients: map[Provider]Client{
 			Provider1: SampleContentProvider{Source: Provider1},
 			Provider2: SampleContentProvider{Source: Provider2},
 			Provider3: SampleContentProvider{Source: Provider3},
 		},
-		Config: DefaultConfig,
+		Config: cfg,
 	}
 	return h
+}
+
+func generateConfig(n int) ContentMix {
+	providers := []Provider{Provider1, Provider2, Provider3}
+
+	config := make(ContentMix, 0, n)
+	for i := 0; i < n; i++ {
+		p := providers[rand.Intn(len(providers))] // nolint:gosec
+		config = append(config, ContentConfig{Type: p})
+	}
+
+	return config
+}
+
+func providerListFromConfig(cfg ContentMix) []Provider {
+	providers := make([]Provider, 0, len(cfg))
+	for _, p := range cfg {
+		providers = append(providers, p.Type)
+	}
+	return providers
 }
 
 func assertStatusCode(t *testing.T, want, got int) {
