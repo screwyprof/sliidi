@@ -22,18 +22,31 @@ func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	countParam := req.URL.Query().Get("count")
 	count := a.pageSizeFromRequest(countParam)
 
-	// fetch items
+	resp, err := a.fetchItems(count)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	a.bindResponse(w, resp)
+}
+
+func (a App) fetchItems(count int) ([]*ContentItem, error) {
 	resp := make([]*ContentItem, 0, count)
 	for i := 0; i < count; i++ {
-		items, err := a.ContentClients[a.Config[i%len(a.Config)].Type].GetContent("127.0.0.1", 1)
+		// select provider
+		p := a.Config[i%len(a.Config)].Type
+
+		items, err := a.ContentClients[p].GetContent("127.0.0.1", 1)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			return nil, err
 		}
 		resp = append(resp, items...)
 	}
+	return resp, nil
+}
 
-	// marshal response
+func (a App) bindResponse(w http.ResponseWriter, resp []*ContentItem) {
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
