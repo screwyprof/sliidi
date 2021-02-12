@@ -19,7 +19,7 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		want := rand.Intn(10)
+		want := rand.Intn(10) // nolint:gosec
 
 		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(want), nil)
 		resp := httptest.NewRecorder()
