@@ -59,6 +59,7 @@ func TestResponseOrder(t *testing.T) {
 }
 
 func TestOffsetResponseOrder(t *testing.T) {
+	t.Skip("WIP")
 	content := runRequest(t, app, OffsetContentRequest)
 
 	if len(content) != 5 {

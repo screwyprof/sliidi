@@ -67,16 +67,7 @@ func TestAppServeHTTP(t *testing.T) {
 
 		// assert
 		assertStatusCode(t, http.StatusOK, resp.Code)
-
-		var items []*ContentItem
-		ok(t, json.NewDecoder(resp.Body).Decode(&items))
-
-		got := make([]Provider, 0, len(items))
-		for _, item := range items {
-			got = append(got, Provider(item.Source))
-		}
-
-		equals(t, want, got)
+		assertConfigurationRespected(t, want, resp)
 	})
 }
 
@@ -110,6 +101,18 @@ func assertResponseElementsCount(t *testing.T, want int, resp *httptest.Response
 	true(t, ok)
 
 	equals(t, want, len(elements))
+}
+
+func assertConfigurationRespected(t *testing.T, want []Provider, resp *httptest.ResponseRecorder) {
+	var items []*ContentItem
+	ok(t, json.NewDecoder(resp.Body).Decode(&items))
+
+	got := make([]Provider, 0, len(items))
+	for _, item := range items {
+		got = append(got, Provider(item.Source))
+	}
+
+	equals(t, want, got)
 }
 
 func ok(tb testing.TB, err error) {
