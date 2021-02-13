@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -50,7 +51,7 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		want := defaultPageSize
+		want := defaultCount
 
 		req := httptest.NewRequest("GET", "/?offset=0", nil)
 		resp := httptest.NewRecorder()
@@ -71,7 +72,7 @@ func TestAppServeHTTP(t *testing.T) {
 		count := rand.Intn(10)                                                       // nolint:gosec
 		cfg := generateConfigWithFaultyProvidersWithStableFallback(rand.Intn(9) + 1) // nolint:gosec
 
-		want := expectedProviderQueueForConfig(cfg, count)
+		want := expectedProviderQueueForConfig(cfg, count, 0)
 
 		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
 		resp := httptest.NewRecorder()
@@ -92,13 +93,35 @@ func TestAppServeHTTP(t *testing.T) {
 		count := rand.Intn(10)                                                                       // nolint:gosec
 		cfg := generateConfigWithFaultyProvidersWithNoFallbackOrWithFaultyFallback(rand.Intn(9) + 1) // nolint:gosec
 
-		want := expectedProviderQueueForConfig(cfg, count)
+		want := expectedProviderQueueForConfig(cfg, count, 0)
 
 		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
 		resp := httptest.NewRecorder()
 
 		// act
 		h := NewAppHandler(cfg, clientsWithFaultyProvider)
+		h.ServeHTTP(resp, req)
+
+		// assert
+		assertStatusOk(t, resp.Code)
+		assertConfigurationRespected(t, want, resp)
+	})
+
+	t.Run("it offsets the configuration by the provided number", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		count := rand.Intn(10)  // nolint:gosec
+		offset := rand.Intn(10) // nolint:gosec
+
+		want := expectedProviderQueueForConfig(DefaultConfig, count, offset)
+
+		url := fmt.Sprintf("/?count=%d&offset=%d", count, offset)
+		req := httptest.NewRequest("GET", url, nil)
+		resp := httptest.NewRecorder()
+
+		// act
+		h := NewAppHandler(DefaultConfig, DefaultClients)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -167,11 +190,11 @@ func generateConfigWithFaultyProvidersWithNoFallbackOrWithFaultyFallback(n int) 
 	return config
 }
 
-func expectedProviderQueueForConfig(cfg ContentMix, count int) []Provider {
+func expectedProviderQueueForConfig(cfg ContentMix, count, offset int) []Provider {
 	queue := make([]Provider, 0, count)
 	providersList := allStableProvidersForConfig(cfg)
 	for i := 0; i < count; i++ {
-		p := providersList[i%len(providersList)]
+		p := providersList[(i+offset)%len(providersList)]
 		if p == faultyProvider {
 			break
 		}
