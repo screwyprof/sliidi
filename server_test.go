@@ -68,7 +68,7 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		count := rand.Intn(9) + 1               // nolint:gosec
+		count := rand.Intn(10)                  // nolint:gosec
 		cfg := generateConfig(rand.Intn(9) + 1) // nolint:gosec
 
 		want := expectedProviderQueueForConfig(cfg, count)
@@ -89,8 +89,29 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		count := rand.Intn(9) + 1                                                    // nolint:gosec
+		count := rand.Intn(10)                                                       // nolint:gosec
 		cfg := generateConfigWithFaultyProvidersWithStableFallback(rand.Intn(9) + 1) // nolint:gosec
+
+		want := expectedProviderQueueForConfig(cfg, count)
+
+		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
+		resp := httptest.NewRecorder()
+
+		// act
+		h := newAppHandler(cfg, clientsWithFaultyProvider)
+		h.ServeHTTP(resp, req)
+
+		// assert
+		assertStatusOk(t, resp.Code)
+		assertConfigurationRespected(t, want, resp)
+	})
+
+	t.Run("it returns all the items before the first big failure", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		count := rand.Intn(10)                                                                       // nolint:gosec
+		cfg := generateConfigWithFaultyProvidersWithNoFallbackOrWithFaultyFallback(rand.Intn(9) + 1) // nolint:gosec
 
 		want := expectedProviderQueueForConfig(cfg, count)
 
@@ -175,16 +196,33 @@ func selectSableFallback(providers []*Provider) *Provider {
 	return fallback
 }
 
+func generateConfigWithFaultyProvidersWithNoFallbackOrWithFaultyFallback(n int) ContentMix {
+	providers := []*Provider{nil, &faultyProvider}
+
+	config := make(ContentMix, 0, n)
+	for i := 0; i < n; i++ {
+		p := providers[rand.Intn(len(providers)-1)+1]    // nolint:gosec
+		fallback := providers[rand.Intn(len(providers))] // nolint:gosec
+		config = append(config, ContentConfig{Type: *p, Fallback: fallback})
+	}
+
+	return config
+}
+
 func expectedProviderQueueForConfig(cfg ContentMix, count int) []Provider {
 	queue := make([]Provider, 0, count)
-	providersList := allProvidersForConfig(cfg)
+	providersList := allStableProvidersForConfig(cfg)
 	for i := 0; i < count; i++ {
-		queue = append(queue, providersList[i%len(providersList)])
+		p := providersList[i%len(providersList)]
+		if p == faultyProvider {
+			break
+		}
+		queue = append(queue, p)
 	}
 	return queue
 }
 
-func allProvidersForConfig(cfg ContentMix) []Provider {
+func allStableProvidersForConfig(cfg ContentMix) []Provider {
 	providers := make([]Provider, 0, len(cfg))
 	for _, c := range cfg {
 		if c.Type == faultyProvider && c.Fallback != nil {

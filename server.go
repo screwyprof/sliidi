@@ -23,25 +23,20 @@ func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	countParam := req.URL.Query().Get("count")
 	count := a.pageSizeFromRequest(countParam)
 
-	resp, err := a.fetchItems(count)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
+	resp := a.fetchItems(count)
 	a.bindResponse(w, resp)
 }
 
-func (a App) fetchItems(count int) ([]*ContentItem, error) {
+func (a App) fetchItems(count int) []*ContentItem {
 	resp := make([]*ContentItem, 0, count)
 	for i := 0; i < count; i++ {
 		items, err := a.fetchItem(i, "127.0.0.1", defaultRecordsPerRequest)
 		if err != nil {
-			return nil, err
+			break
 		}
 		resp = append(resp, items...)
 	}
-	return resp, nil
+	return resp
 }
 
 func (a App) fetchItem(n int, ip string, limit int) ([]*ContentItem, error) {
