@@ -14,10 +14,7 @@ var (
 
 	// app gets initialised with configuration.
 	// as an example we've added 3 providers and a defautl configuration
-	app = App{
-		ContentClients: DefaultClients,
-		Config:         DefaultConfig,
-	}
+	app = NewAppHandler(DefaultConfig, DefaultClients)
 )
 
 func main() {

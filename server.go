@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,8 +12,13 @@ const defaultRecordsPerRequest = 1
 // App represents the server's internal state.
 // It holds configuration about providers and content
 type App struct {
-	ContentClients map[Provider]Client
-	Config         ContentMix
+	fetcher fetcher
+	rb      jsonResponseBinder
+}
+
+func NewAppHandler(cfg ContentMix, contentClients map[Provider]Client) App {
+	f := fetcher{Config: cfg, ContentClients: contentClients}
+	return App{fetcher: f}
 }
 
 func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -23,47 +27,8 @@ func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	countParam := req.URL.Query().Get("count")
 	count := a.pageSizeFromRequest(countParam)
 
-	resp := a.fetchItems(count)
-	a.bindResponse(w, resp)
-}
-
-func (a App) fetchItems(count int) []*ContentItem {
-	resp := make([]*ContentItem, 0, count)
-	for i := 0; i < count; i++ {
-		items, err := a.fetchItem(i, "127.0.0.1", defaultRecordsPerRequest)
-		if err != nil {
-			break
-		}
-		resp = append(resp, items...)
-	}
-	return resp
-}
-
-func (a App) fetchItem(n int, ip string, limit int) ([]*ContentItem, error) {
-	p := a.selectProviderFor(n)
-
-	items, err := a.ContentClients[p.Type].GetContent(ip, limit)
-	if err == nil {
-		return items, nil
-	}
-
-	if p.Fallback == nil {
-		return nil, err
-	}
-
-	return a.ContentClients[*p.Fallback].GetContent(ip, limit)
-}
-
-func (a App) selectProviderFor(n int) ContentConfig {
-	p := a.Config[n%len(a.Config)]
-	return p
-}
-
-func (a App) bindResponse(w http.ResponseWriter, resp []*ContentItem) {
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	resp := a.fetcher.fetchItems(req.Header.Get("X-Forwarded-For"), count, defaultRecordsPerRequest)
+	a.rb.bindResponse(w, resp)
 }
 
 func (a App) pageSizeFromRequest(countParam string) int {

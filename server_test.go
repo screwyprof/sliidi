@@ -38,7 +38,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(DefaultConfig, DefaultClients)
+		h := NewAppHandler(DefaultConfig, DefaultClients)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -56,33 +56,12 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(DefaultConfig, DefaultClients)
+		h := NewAppHandler(DefaultConfig, DefaultClients)
 		h.ServeHTTP(resp, req)
 
 		// assert
 		assertStatusOk(t, resp.Code)
 		assertResponseElementsCount(t, want, resp)
-	})
-
-	t.Run("it fetches records from the given providers according to the configuration", func(t *testing.T) {
-		t.Parallel()
-
-		// arrange
-		count := rand.Intn(10)                  // nolint:gosec
-		cfg := generateConfig(rand.Intn(9) + 1) // nolint:gosec
-
-		want := expectedProviderQueueForConfig(cfg, count)
-
-		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
-		resp := httptest.NewRecorder()
-
-		// act
-		h := newAppHandler(cfg, DefaultClients)
-		h.ServeHTTP(resp, req)
-
-		// assert
-		assertStatusOk(t, resp.Code)
-		assertConfigurationRespected(t, want, resp)
 	})
 
 	t.Run("it fallbacks to a specified provider on failure", func(t *testing.T) {
@@ -98,7 +77,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(cfg, clientsWithFaultyProvider)
+		h := NewAppHandler(cfg, clientsWithFaultyProvider)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -119,7 +98,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(cfg, clientsWithFaultyProvider)
+		h := NewAppHandler(cfg, clientsWithFaultyProvider)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -141,8 +120,7 @@ func (cp mockContentProvider) GetContent(userIP string, count int) ([]*ContentIt
 	resp := make([]*ContentItem, count)
 	for i := range resp {
 		resp[i] = &ContentItem{
-			// nolint:gosec
-			ID:     strconv.Itoa(rand.Int()),
+			ID:     strconv.Itoa(rand.Int()), // nolint:gosec
 			Title:  "title",
 			Source: string(cp.Source),
 			Expiry: time.Now(),
@@ -150,26 +128,6 @@ func (cp mockContentProvider) GetContent(userIP string, count int) ([]*ContentIt
 
 	}
 	return resp, nil
-}
-
-func newAppHandler(cfg ContentMix, contentClients map[Provider]Client) App {
-	h := App{
-		ContentClients: contentClients,
-		Config:         cfg,
-	}
-	return h
-}
-
-func generateConfig(n int) ContentMix {
-	providers := []Provider{Provider1, Provider2, Provider3}
-
-	config := make(ContentMix, 0, n)
-	for i := 0; i < n; i++ {
-		p := providers[rand.Intn(len(providers))] // nolint:gosec
-		config = append(config, ContentConfig{Type: p})
-	}
-
-	return config
 }
 
 func generateConfigWithFaultyProvidersWithStableFallback(n int) ContentMix {
