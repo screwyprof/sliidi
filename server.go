@@ -8,6 +8,7 @@ import (
 )
 
 const defaultPageSize = 5
+const defaultRecordsPerRequest = 1
 
 // App represents the server's internal state.
 // It holds configuration about providers and content
@@ -34,7 +35,7 @@ func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (a App) fetchItems(count int) ([]*ContentItem, error) {
 	resp := make([]*ContentItem, 0, count)
 	for i := 0; i < count; i++ {
-		items, err := a.fetchItem(i)
+		items, err := a.fetchItem(i, "127.0.0.1", defaultRecordsPerRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -43,10 +44,10 @@ func (a App) fetchItems(count int) ([]*ContentItem, error) {
 	return resp, nil
 }
 
-func (a App) fetchItem(i int) ([]*ContentItem, error) {
-	p := a.Config[i%len(a.Config)]
+func (a App) fetchItem(n int, ip string, limit int) ([]*ContentItem, error) {
+	p := a.Config[n%len(a.Config)]
 
-	items, err := a.ContentClients[p.Type].GetContent("127.0.0.1", 1)
+	items, err := a.ContentClients[p.Type].GetContent(ip, limit)
 	if err == nil {
 		return items, nil
 	}
@@ -55,7 +56,7 @@ func (a App) fetchItem(i int) ([]*ContentItem, error) {
 		return nil, err
 	}
 
-	return a.ContentClients[*p.Fallback].GetContent("127.0.0.1", 1)
+	return a.ContentClients[*p.Fallback].GetContent(ip, limit)
 }
 
 func (a App) bindResponse(w http.ResponseWriter, resp []*ContentItem) {
