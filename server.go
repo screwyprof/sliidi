@@ -45,7 +45,7 @@ func (a App) fetchItems(count int) ([]*ContentItem, error) {
 }
 
 func (a App) fetchItem(n int, ip string, limit int) ([]*ContentItem, error) {
-	p := a.Config[n%len(a.Config)]
+	p := a.selectProviderFor(n)
 
 	items, err := a.ContentClients[p.Type].GetContent(ip, limit)
 	if err == nil {
@@ -57,6 +57,11 @@ func (a App) fetchItem(n int, ip string, limit int) ([]*ContentItem, error) {
 	}
 
 	return a.ContentClients[*p.Fallback].GetContent(ip, limit)
+}
+
+func (a App) selectProviderFor(n int) ContentConfig {
+	p := a.Config[n%len(a.Config)]
+	return p
 }
 
 func (a App) bindResponse(w http.ResponseWriter, resp []*ContentItem) {

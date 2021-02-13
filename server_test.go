@@ -59,10 +59,10 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		count := rand.Intn(10) // nolint:gosec
-		cfg := generateConfig(count)
+		count := rand.Intn(9) + 1               // nolint:gosec
+		cfg := generateConfig(rand.Intn(9) + 1) // nolint:gosec
 
-		want := providerListFromConfig(cfg)
+		want := providerQueueForConfig(cfg, count)
 
 		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
 		resp := httptest.NewRecorder()
@@ -80,10 +80,10 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		count := rand.Intn(10) // nolint:gosec
-		cfg := generateConfigWithFaultyProvidersWithStableFallback(count)
+		count := rand.Intn(9) + 1                                                    // nolint:gosec
+		cfg := generateConfigWithFaultyProvidersWithStableFallback(rand.Intn(9) + 1) // nolint:gosec
 
-		want := providerListFromConfig(cfg)
+		want := providerQueueForConfig(cfg, count)
 
 		contentClients := map[Provider]Client{
 			faultyProvider: mockContentProvider{Source: faultyProvider, Err: errors.New("some error")},
@@ -155,17 +155,31 @@ func generateConfigWithFaultyProvidersWithStableFallback(n int) ContentMix {
 	config := make(ContentMix, 0, n)
 	for i := 0; i < n; i++ {
 		p := providers[rand.Intn(len(providers)-1)+1] // nolint:gosec
-		var fallback *Provider
-		for {
-			fallback = providers[rand.Intn(len(providers)-1)] // nolint:gosec
-			if fallback != nil && fallback != &faultyProvider {
-				break
-			}
-		}
+		fallback := selectSableFallback(providers)
 		config = append(config, ContentConfig{Type: *p, Fallback: fallback})
 	}
 
 	return config
+}
+
+func selectSableFallback(providers []*Provider) *Provider {
+	var fallback *Provider
+	for {
+		fallback = providers[rand.Intn(len(providers)-1)] // nolint:gosec
+		if fallback != nil && fallback != &faultyProvider {
+			break
+		}
+	}
+	return fallback
+}
+
+func providerQueueForConfig(cfg ContentMix, count int) []Provider {
+	queue := make([]Provider, 0, count)
+	providersList := providerListFromConfig(cfg)
+	for i := 0; i < count; i++ {
+		queue = append(queue, providersList[i%len(providersList)])
+	}
+	return queue
 }
 
 func providerListFromConfig(cfg ContentMix) []Provider {
