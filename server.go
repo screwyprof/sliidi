@@ -34,23 +34,28 @@ func (a App) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (a App) fetchItems(count int) ([]*ContentItem, error) {
 	resp := make([]*ContentItem, 0, count)
 	for i := 0; i < count; i++ {
-		// select provider
-		p := a.Config[i%len(a.Config)]
-
-		items, err := a.ContentClients[p.Type].GetContent("127.0.0.1", 1)
+		items, err := a.fetchItem(i)
 		if err != nil {
-			if p.Fallback != nil {
-				items, err = a.ContentClients[*p.Fallback].GetContent("127.0.0.1", 1)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				return nil, err
-			}
+			return nil, err
 		}
 		resp = append(resp, items...)
 	}
 	return resp, nil
+}
+
+func (a App) fetchItem(i int) ([]*ContentItem, error) {
+	p := a.Config[i%len(a.Config)]
+
+	items, err := a.ContentClients[p.Type].GetContent("127.0.0.1", 1)
+	if err == nil {
+		return items, nil
+	}
+
+	if p.Fallback == nil {
+		return nil, err
+	}
+
+	return a.ContentClients[*p.Fallback].GetContent("127.0.0.1", 1)
 }
 
 func (a App) bindResponse(w http.ResponseWriter, resp []*ContentItem) {

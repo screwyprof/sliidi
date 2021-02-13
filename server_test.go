@@ -33,7 +33,7 @@ func TestAppServeHTTP(t *testing.T) {
 		h.ServeHTTP(resp, req)
 
 		// assert
-		assertStatusCode(t, http.StatusOK, resp.Code)
+		assertStatusOk(t, resp.Code)
 		assertResponseElementsCount(t, want, resp)
 	})
 
@@ -51,7 +51,7 @@ func TestAppServeHTTP(t *testing.T) {
 		h.ServeHTTP(resp, req)
 
 		// assert
-		assertStatusCode(t, http.StatusOK, resp.Code)
+		assertStatusOk(t, resp.Code)
 		assertResponseElementsCount(t, want, resp)
 	})
 
@@ -72,7 +72,7 @@ func TestAppServeHTTP(t *testing.T) {
 		h.ServeHTTP(resp, req)
 
 		// assert
-		assertStatusCode(t, http.StatusOK, resp.Code)
+		assertStatusOk(t, resp.Code)
 		assertConfigurationRespected(t, want, resp)
 	})
 
@@ -100,7 +100,7 @@ func TestAppServeHTTP(t *testing.T) {
 		h.ServeHTTP(resp, req)
 
 		// assert
-		assertStatusCode(t, http.StatusOK, resp.Code)
+		assertStatusOk(t, resp.Code)
 		assertConfigurationRespected(t, want, resp)
 	})
 }
@@ -178,6 +178,11 @@ func providerListFromConfig(cfg ContentMix) []Provider {
 		}
 	}
 	return providers
+}
+
+func assertStatusOk(t *testing.T, got int) {
+	t.Helper()
+	assertStatusCode(t, http.StatusOK, got)
 }
 
 func assertStatusCode(t *testing.T, want, got int) {
