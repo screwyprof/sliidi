@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,8 @@ import (
 	"testing"
 	"time"
 )
+
+var faultyProvider = Provider("faulty")
 
 func init() {
 	rand.Seed(time.Now().Unix())
@@ -26,7 +29,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(DefaultConfig)
+		h := newAppHandler(DefaultConfig, DefaultClients)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -44,7 +47,7 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(DefaultConfig)
+		h := newAppHandler(DefaultConfig, DefaultClients)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -56,7 +59,7 @@ func TestAppServeHTTP(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		count := 0 //rand.Intn(9) + 1 // nolint:gosec
+		count := rand.Intn(10) // nolint:gosec
 		cfg := generateConfig(count)
 
 		want := providerListFromConfig(cfg)
@@ -65,7 +68,35 @@ func TestAppServeHTTP(t *testing.T) {
 		resp := httptest.NewRecorder()
 
 		// act
-		h := newAppHandler(cfg)
+		h := newAppHandler(cfg, DefaultClients)
+		h.ServeHTTP(resp, req)
+
+		// assert
+		assertStatusCode(t, http.StatusOK, resp.Code)
+		assertConfigurationRespected(t, want, resp)
+	})
+
+	t.Run("it fallbacks to a specified provider on failure", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		count := rand.Intn(10) // nolint:gosec
+		cfg := generateConfigWithFaultyProvidersWithStableFallback(count)
+
+		want := providerListFromConfig(cfg)
+
+		contentClients := map[Provider]Client{
+			faultyProvider: mockContentProvider{Source: faultyProvider, Err: errors.New("some error")},
+			Provider1:      SampleContentProvider{Source: Provider1},
+			Provider2:      SampleContentProvider{Source: Provider2},
+			Provider3:      SampleContentProvider{Source: Provider3},
+		}
+
+		req := httptest.NewRequest("GET", "/?offset=0&count="+strconv.Itoa(count), nil)
+		resp := httptest.NewRecorder()
+
+		// act
+		h := newAppHandler(cfg, contentClients)
 		h.ServeHTTP(resp, req)
 
 		// assert
@@ -74,14 +105,34 @@ func TestAppServeHTTP(t *testing.T) {
 	})
 }
 
-func newAppHandler(cfg ContentMix) App {
+type mockContentProvider struct {
+	Err    error
+	Source Provider
+}
+
+func (cp mockContentProvider) GetContent(userIP string, count int) ([]*ContentItem, error) {
+	if cp.Err != nil {
+		return nil, cp.Err
+	}
+
+	resp := make([]*ContentItem, count)
+	for i := range resp {
+		resp[i] = &ContentItem{
+			// nolint:gosec
+			ID:     strconv.Itoa(rand.Int()),
+			Title:  "title",
+			Source: string(cp.Source),
+			Expiry: time.Now(),
+		}
+
+	}
+	return resp, nil
+}
+
+func newAppHandler(cfg ContentMix, contentClients map[Provider]Client) App {
 	h := App{
-		ContentClients: map[Provider]Client{
-			Provider1: SampleContentProvider{Source: Provider1},
-			Provider2: SampleContentProvider{Source: Provider2},
-			Provider3: SampleContentProvider{Source: Provider3},
-		},
-		Config: cfg,
+		ContentClients: contentClients,
+		Config:         cfg,
 	}
 	return h
 }
@@ -98,10 +149,33 @@ func generateConfig(n int) ContentMix {
 	return config
 }
 
+func generateConfigWithFaultyProvidersWithStableFallback(n int) ContentMix {
+	providers := []*Provider{nil, &Provider1, &Provider2, &Provider3, &faultyProvider}
+
+	config := make(ContentMix, 0, n)
+	for i := 0; i < n; i++ {
+		p := providers[rand.Intn(len(providers)-1)+1] // nolint:gosec
+		var fallback *Provider
+		for {
+			fallback = providers[rand.Intn(len(providers)-1)] // nolint:gosec
+			if fallback != nil && fallback != &faultyProvider {
+				break
+			}
+		}
+		config = append(config, ContentConfig{Type: *p, Fallback: fallback})
+	}
+
+	return config
+}
+
 func providerListFromConfig(cfg ContentMix) []Provider {
 	providers := make([]Provider, 0, len(cfg))
-	for _, p := range cfg {
-		providers = append(providers, p.Type)
+	for _, c := range cfg {
+		if c.Type == faultyProvider && c.Fallback != nil {
+			providers = append(providers, *c.Fallback)
+		} else {
+			providers = append(providers, c.Type)
+		}
 	}
 	return providers
 }
@@ -121,12 +195,14 @@ func assertResponseElementsCount(t *testing.T, want int, resp *httptest.Response
 	ok(t, err)
 
 	elements, ok := res.([]interface{})
-	true(t, ok)
+	equals(t, true, ok)
 
 	equals(t, want, len(elements))
 }
 
 func assertConfigurationRespected(t *testing.T, want []Provider, resp *httptest.ResponseRecorder) {
+	t.Helper()
+
 	var items []*ContentItem
 	ok(t, json.NewDecoder(resp.Body).Decode(&items))
 
@@ -142,13 +218,6 @@ func ok(tb testing.TB, err error) {
 	tb.Helper()
 	if err != nil {
 		tb.Fatalf("\033[31munexpected error: %v\033[39m\n\n", err)
-	}
-}
-
-func true(tb testing.TB, condition bool) {
-	tb.Helper()
-	if !condition {
-		tb.Errorf("\033[31mcondition is false\033[39m\n\n")
 	}
 }
 

@@ -35,11 +35,18 @@ func (a App) fetchItems(count int) ([]*ContentItem, error) {
 	resp := make([]*ContentItem, 0, count)
 	for i := 0; i < count; i++ {
 		// select provider
-		p := a.Config[i%len(a.Config)].Type
+		p := a.Config[i%len(a.Config)]
 
-		items, err := a.ContentClients[p].GetContent("127.0.0.1", 1)
+		items, err := a.ContentClients[p.Type].GetContent("127.0.0.1", 1)
 		if err != nil {
-			return nil, err
+			if p.Fallback != nil {
+				items, err = a.ContentClients[*p.Fallback].GetContent("127.0.0.1", 1)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
 		}
 		resp = append(resp, items...)
 	}

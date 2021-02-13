@@ -15,12 +15,8 @@ var (
 	// app gets initialised with configuration.
 	// as an example we've added 3 providers and a defautl configuration
 	app = App{
-		ContentClients: map[Provider]Client{
-			Provider1: SampleContentProvider{Source: Provider1},
-			Provider2: SampleContentProvider{Source: Provider2},
-			Provider3: SampleContentProvider{Source: Provider3},
-		},
-		Config: DefaultConfig,
+		ContentClients: DefaultClients,
+		Config:         DefaultConfig,
 	}
 )
 
