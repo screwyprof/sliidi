@@ -83,6 +83,9 @@ Hints:
 
 # Development
 
+## Development Log
+[This document](DEVELOPMENT.md) guides your though the steps I've taken to implement this task.
+
 ### Building the project
 Simply run `make` or `make all` to install all the required dependencies and tools, to run linters and all the tests.
 Use `make help` to get information about additional targets.
