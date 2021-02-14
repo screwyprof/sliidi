@@ -53,7 +53,7 @@ func TestAppServeHTTP(t *testing.T) {
 		// arrange
 		want := defaultCount
 
-		req := httptest.NewRequest("GET", "/?offset=0", nil)
+		req := httptest.NewRequest("GET", "/", nil)
 		resp := httptest.NewRecorder()
 
 		// act
