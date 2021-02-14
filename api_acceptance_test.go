@@ -33,7 +33,6 @@ func runRequest(t *testing.T, srv http.Handler, r *http.Request) (content []*Con
 }
 
 func TestResponseCount(t *testing.T) {
-	t.Skip("WIP")
 	content := runRequest(t, app, SimpleContentRequest)
 
 	if len(content) != 5 {
@@ -43,7 +42,6 @@ func TestResponseCount(t *testing.T) {
 }
 
 func TestResponseOrder(t *testing.T) {
-	t.Skip("WIP")
 	content := runRequest(t, app, SimpleContentRequest)
 
 	if len(content) != 5 {
@@ -61,7 +59,6 @@ func TestResponseOrder(t *testing.T) {
 }
 
 func TestOffsetResponseOrder(t *testing.T) {
-	t.Skip("WIP")
 	content := runRequest(t, app, OffsetContentRequest)
 
 	if len(content) != 5 {
@@ -73,7 +70,7 @@ func TestOffsetResponseOrder(t *testing.T) {
 		if Provider(item.Source) != DefaultConfig[i%len(DefaultConfig)].Type {
 			t.Errorf(
 				"Position %d: Got Provider %v instead of Provider %v",
-				i, item.Source, DefaultConfig[i].Type,
+				i, item.Source, DefaultConfig[i%len(DefaultConfig)].Type,
 			)
 		}
 	}

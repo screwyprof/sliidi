@@ -28,4 +28,10 @@ var (
 	DefaultConfig = []ContentConfig{
 		config1, config1, config2, config3, config4, config1, config1, config2,
 	}
+
+	DefaultClients = map[Provider]Client{
+		Provider1: SampleContentProvider{Source: Provider1},
+		Provider2: SampleContentProvider{Source: Provider2},
+		Provider3: SampleContentProvider{Source: Provider3},
+	}
 )
