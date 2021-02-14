@@ -178,12 +178,13 @@ func selectSableFallback(providers []*Provider) *Provider {
 }
 
 func generateConfigWithFaultyProvidersWithNoFallbackOrWithFaultyFallback(n int) ContentMix {
-	providers := []*Provider{nil, &faultyProvider}
+	faultyProviders := []*Provider{nil, &faultyProvider}
+	providers := []*Provider{&faultyProvider, &Provider1, &Provider2, &Provider3}
 
 	config := make(ContentMix, 0, n)
 	for i := 0; i < n; i++ {
-		p := providers[rand.Intn(len(providers)-1)+1]    // nolint:gosec
-		fallback := providers[rand.Intn(len(providers))] // nolint:gosec
+		p := providers[rand.Intn(len(providers))]                    // nolint:gosec
+		fallback := faultyProviders[rand.Intn(len(faultyProviders))] // nolint:gosec
 		config = append(config, ContentConfig{Type: *p, Fallback: fallback})
 	}
 
@@ -251,7 +252,30 @@ func assertConfigurationRespected(t *testing.T, want []Provider, resp *httptest.
 		got = append(got, Provider(item.Source))
 	}
 
-	equals(t, want, got)
+	assertProvidersMatch(t, want, got)
+}
+
+func assertProvidersMatch(t *testing.T, want []Provider, got []Provider) {
+	t.Helper()
+
+	equals(t, len(want), len(got))
+
+	diff := make(map[Provider]int, len(want))
+	for _, x := range want {
+		diff[x]++
+	}
+
+	for _, y := range got {
+		_, ok := diff[y]
+		equals(t, true, ok)
+
+		diff[y]--
+		if diff[y] == 0 {
+			delete(diff, y)
+		}
+	}
+
+	equals(t, 0, len(diff))
 }
 
 func ok(tb testing.TB, err error) {
@@ -264,6 +288,6 @@ func ok(tb testing.TB, err error) {
 func equals(tb testing.TB, exp, act interface{}) {
 	tb.Helper()
 	if !reflect.DeepEqual(exp, act) {
-		tb.Errorf("\033[31m\n\n\texp:\n\t%#+v\n\n\tgot:\n\t%#+v\033[39m", exp, act)
+		tb.Fatalf("\033[31m\n\n\texp:\n\t%#+v\n\n\tgot:\n\t%#+v\033[39m", exp, act)
 	}
 }

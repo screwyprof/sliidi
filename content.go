@@ -43,8 +43,7 @@ func (cp SampleContentProvider) GetContent(userIP string, count int) ([]*Content
 	resp := make([]*ContentItem, count)
 	for i := range resp {
 		resp[i] = &ContentItem{
-			// nolint:gosec
-			ID:     strconv.Itoa(rand.Int()),
+			ID:     strconv.Itoa(rand.Int()), // nolint:gosec
 			Title:  "title",
 			Source: string(cp.Source),
 			Expiry: time.Now(),
